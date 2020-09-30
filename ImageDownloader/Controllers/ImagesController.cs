@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -36,7 +37,11 @@ namespace ImageDownloader.Controllers
         {
             try
             {
-                var imageNames = new List<string>();
+                if (HttpContext.Request.ContentType == null)
+                {
+                    throw new ApplicationException("Unknown Content Type");
+                }
+                List<string> imageNames;
                 if (HttpContext.Request.ContentType.Contains("text/html"))
                 {
                     imageNames = await SaveFromUrl(HttpContext.Request.Body);
@@ -48,6 +53,10 @@ namespace ImageDownloader.Controllers
                 else if (HttpContext.Request.ContentType.Contains("multipart/form-data"))
                 {
                     imageNames = await SaveFromFiles(HttpContext.Request.Form.Files);
+                }
+                else
+                {
+                    throw new ApplicationException("Unsupported Content Type");
                 }
 
                 foreach (var imageName in imageNames)
@@ -82,6 +91,11 @@ namespace ImageDownloader.Controllers
             var result = new List<string>(files.Count);
             foreach (var file in files)
             {
+                var extension = Path.GetExtension(file.FileName);
+                if (!IsImageExtension(extension?.TrimStart('.')))
+                {
+                    throw new ApplicationException($"Unexpected file format: {extension}.");
+                }
                 await using var stream = file.OpenReadStream();
                 var savedFileName =_fileStorage.SaveFile(stream, file.FileName);
                 result.Add(savedFileName);
@@ -110,7 +124,10 @@ namespace ImageDownloader.Controllers
                 {
                     throw new ApplicationException("Extension not found");
                 }
-
+                if (!IsImageExtension(extension.Value))
+                {
+                    throw new ApplicationException("Is not image");
+                }
                 var encodedData = Convert.FromBase64String(base64Data);
                 var savedFileName = _fileStorage.SaveFile(encodedData, $"{Guid.NewGuid()}.{extension.Value}");
                result.Add(savedFileName);
@@ -125,7 +142,12 @@ namespace ImageDownloader.Controllers
             var str = await GetBody(body);
             if (Uri.TryCreate(str, UriKind.Absolute, out var uriResult))
             {
-                var fileName = Path.GetFileName(uriResult.OriginalString);
+                var fileExt = Path.GetExtension(uriResult.LocalPath);
+                if (!IsImageExtension(fileExt.TrimStart('.')))
+                {
+                    throw new ApplicationException("Url not contains image");
+                }
+                var fileName = Path.GetFileName(uriResult.LocalPath);
                 var file = await DownloadImageByUrl(uriResult);
                 var savedFileName = _fileStorage.SaveFile(file, fileName);
                 result.Add(savedFileName);
@@ -140,7 +162,18 @@ namespace ImageDownloader.Controllers
                 return webClient.DownloadData(uri);
             }
         }
-
+        private static Lazy<string[]> imageFormats = new Lazy<string[]>(() =>
+        {
+            return typeof(System.Drawing.Imaging.ImageFormat)
+                .GetProperties()
+                .Select(x => x.Name)
+                .Union(new []{"jpg"})
+                .ToArray();
+        });
+        private bool IsImageExtension(string ext)
+        {
+            return imageFormats.Value.Any(x => x.Equals(ext, StringComparison.InvariantCultureIgnoreCase));
+        }
         private void CreatePreview(string fileName)
         {
             using var fullSizeImageStream = _fileStorage.GetFile(fileName);
