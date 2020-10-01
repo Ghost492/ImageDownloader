@@ -31,7 +31,7 @@ namespace ImageDownloader.Controllers
             _fileStorage = fileStorage;
             _previewCreator = previewCreator;
         }
-       
+
         [HttpPost("download")]
         public async Task<ActionResult> Download()
         {
@@ -97,7 +97,7 @@ namespace ImageDownloader.Controllers
                     throw new ApplicationException($"Unexpected file format: {extension}.");
                 }
                 await using var stream = file.OpenReadStream();
-                var savedFileName =_fileStorage.SaveFile(stream, file.FileName);
+                var savedFileName = _fileStorage.SaveFile(stream, file.FileName);
                 result.Add(savedFileName);
             }
             return result;
@@ -110,7 +110,7 @@ namespace ImageDownloader.Controllers
             var result = new List<string>(array.Length);
             foreach (var imgString in array)
             {
-                var strings = imgString.Split(new[] {","}, StringSplitOptions.RemoveEmptyEntries);
+                var strings = imgString.Split(new[] { "," }, StringSplitOptions.RemoveEmptyEntries);
                 if (strings.Length != 2)
                 {
                     throw new ApplicationException("It is not base64 image format");
@@ -130,7 +130,7 @@ namespace ImageDownloader.Controllers
                 }
                 var encodedData = Convert.FromBase64String(base64Data);
                 var savedFileName = _fileStorage.SaveFile(encodedData, $"{Guid.NewGuid()}.{extension.Value}");
-               result.Add(savedFileName);
+                result.Add(savedFileName);
             }
 
             return result;
@@ -167,7 +167,7 @@ namespace ImageDownloader.Controllers
             return typeof(System.Drawing.Imaging.ImageFormat)
                 .GetProperties()
                 .Select(x => x.Name)
-                .Union(new []{"jpg"})
+                .Union(new[] { "jpg" })
                 .ToArray();
         });
         private bool IsImageExtension(string ext)

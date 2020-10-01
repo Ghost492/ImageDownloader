@@ -9,7 +9,7 @@ using System.IO;
 
 namespace ImageDownloader.Helpers
 {
-    public class PreviewCreator :IPreviewCreator
+    public class PreviewCreator : IPreviewCreator
     {
         private const int previewWidth = 100;
         private const int previewHeight = 100;
@@ -19,7 +19,7 @@ namespace ImageDownloader.Helpers
                 new Image.GetThumbnailImageAbort(() => false);
             var image = Image.FromStream(fullImage);
             var thumbnailImage = image.GetThumbnailImage(previewWidth, previewHeight, callback, IntPtr.Zero);
-            thumbnailImage.Save(outputStream,ImageFormat.Jpeg);
+            thumbnailImage.Save(outputStream, ImageFormat.Jpeg);
         }
     }
 }
